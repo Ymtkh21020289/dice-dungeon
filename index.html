@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DICE DUNGEON</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- ========= TITLE SCREEN ========= -->
+<div id="title-screen" class="screen active">
+  <div class="title-logo">
+    <h1>DICE DUNGEON</h1>
+    <p>ROLL FATE · BUILD POWER · DESCEND DEEPER</p>
+  </div>
+  <div class="title-dice">
+    <div class="title-die">d4</div>
+    <div class="title-die">d6</div>
+    <div class="title-die">d8</div>
+    <div class="title-die">d10</div>
+    <div class="title-die">d12</div>
+  </div>
+  <button class="btn btn-primary" onclick="startGame()">ENTER THE DUNGEON</button>
+</div>
+
+<!-- ========= MAP SCREEN ========= -->
+<div id="map-screen" class="screen">
+  <div class="top-bar">
+    <div class="floor-info" id="floor-info">FLOOR 1</div>
+    <div class="stat-group">
+      <div class="stat-item hp">
+        <div>
+          <div class="label">HP</div>
+          <div class="val" id="top-hp">50/50</div>
+        </div>
+        <div class="hp-bar-mini"><div class="hp-bar-mini-fill" id="top-hp-bar" style="width:100%"></div></div>
+      </div>
+      <div class="stat-item gold">
+        <div class="label">GOLD</div>
+        <div class="val" id="top-gold">0</div>
+      </div>
+      <div class="relic-strip" id="top-relics"></div>
+    </div>
+    <button class="btn btn-sm" onclick="toggleInventory()">INVENTORY</button>
+  </div>
+  <div class="map-content">
+    <div class="phase-indicator" id="phase-indicator"></div>
+    <div id="cards-container" class="cards-row"></div>
+    <p style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text3)">— 1枚選んで進む —</p>
+  </div>
+</div>
+
+<!-- ========= COMBAT SCREEN ========= -->
+<div id="combat-screen" class="screen">
+  <div class="top-bar">
+    <div class="floor-info" id="combat-floor-info">FLOOR 1 · PHASE 1</div>
+    <div class="stat-group">
+      <div class="stat-item gold">
+        <div class="label">GOLD</div>
+        <div class="val" id="combat-gold">0</div>
+      </div>
+      <div class="relic-strip" id="combat-relics"></div>
+    </div>
+  </div>
+  <div class="combat-layout">
+    <!-- Enemy area -->
+    <div class="enemy-area">
+      <div class="enemy-info">
+        <div class="enemy-name" id="enemy-name">スライム</div>
+        <div class="status-row" id="enemy-status"></div>
+        <div id="enemy-resist-row" class="resist-row"></div>
+        <div class="enemy-hp-bar"><div class="enemy-hp-fill" id="enemy-hp-fill"></div></div>
+        <div class="enemy-hp-text" id="enemy-hp-text">20/20</div>
+      </div>
+      <div class="enemy-intent" id="enemy-intent">
+        <div class="intent-title">NEXT ACTION</div>
+        <div class="intent-action" id="intent-action">攻撃</div>
+        <div class="intent-dice" id="intent-dice"></div>
+      </div>
+    </div>
+
+    <!-- Middle: Log + Dice -->
+    <div class="battle-area">
+      <div class="battle-log" id="battle-log"></div>
+      <div class="dice-panel">
+        <div class="dice-section-title">ATK DICE</div>
+        <div class="dice-row" id="atk-dice-display"></div>
+        <div class="dice-section-title" style="margin-top:4px">DEF DICE</div>
+        <div class="dice-row" id="def-dice-display"></div>
+      </div>
+    </div>
+
+    <!-- Player area -->
+    <div class="player-area">
+      <div class="player-hp-bar"><div class="player-hp-fill" id="player-hp-fill"></div></div>
+      <div class="player-hp-text" id="player-hp-text">50/50</div>
+      <div class="status-row" id="player-status"></div>
+      <div id="combat-ui"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========= REWARD SCREEN ========= -->
+<div id="reward-screen" class="screen">
+  <div class="reward-title" id="reward-title">VICTORY!</div>
+  <p style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text3)">報酬を1つ選択</p>
+  <div class="reward-items" id="reward-items"></div>
+  <button class="btn" onclick="closeReward()">CONTINUE →</button>
+</div>
+
+<!-- ========= SHOP SCREEN ========= -->
+<div id="shop-screen" class="screen">
+  <div class="top-bar" style="width:100%">
+    <div class="shop-title">⚖ TRADER</div>
+    <div class="stat-item gold" style="gap:8px"><div class="label">GOLD</div><div class="val" id="shop-gold">0</div></div>
+  </div>
+  <div class="shop-items" id="shop-items"></div>
+  <button class="btn" onclick="leaveShop()">LEAVE SHOP</button>
+</div>
+
+<!-- ========= GAME OVER ========= -->
+<div id="gameover-screen" class="screen">
+  <div class="gameover-title">GAME OVER</div>
+  <p style="font-family:'Share Tech Mono',monospace;color:var(--text3);letter-spacing:0.2em" id="gameover-stats"></p>
+  <button class="btn btn-primary" onclick="startGame()">TRY AGAIN</button>
+</div>
+
+<!-- ========= WIN SCREEN ========= -->
+<div id="win-screen" class="screen">
+  <div style="font-family:'Cinzel',serif;font-size:clamp(32px,6vw,72px);font-weight:900;color:var(--accent);text-shadow:0 0 40px rgba(232,184,64,0.5);letter-spacing:0.2em;text-align:center">DUNGEON<br>CLEARED</div>
+  <p style="font-family:'Share Tech Mono',monospace;color:var(--text2);letter-spacing:0.2em">ALL 10 FLOORS CONQUERED</p>
+  <button class="btn btn-primary" onclick="startGame()">PLAY AGAIN</button>
+</div>
+
+<!-- ========= INVENTORY PANEL ========= -->
+<div class="inventory-panel" id="inventory-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="font-family:'Cinzel',serif;font-size:16px;color:var(--accent)">INVENTORY</div>
+    <button class="btn btn-sm" onclick="toggleInventory()">CLOSE</button>
+  </div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.3em;margin-bottom:8px">WEAPONS</div>
+  <div id="inv-weapons" style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px"></div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.3em;margin-bottom:8px">RELICS</div>
+  <div id="inv-relics" class="relic-list"></div>
+</div>
+<button class="btn btn-sm inv-toggle" onclick="toggleInventory()">⚔ INV</button>
+<button class="btn btn-sm help-toggle" onclick="toggleHelp()">? HELP</button>
+
+<!-- ========= HELP MODAL ========= -->
+<div id="help-modal" class="modal-overlay" onclick="if(event.target===this)toggleHelp()">
+  <div class="modal-box" style="max-width:600px;width:95%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="modal-title">📖 GAME GUIDE</div>
+      <button class="btn btn-sm" onclick="toggleHelp()">CLOSE</button>
+    </div>
+    <div class="help-tabs">
+      <button class="help-tab active" onclick="showHelpTab('combat')">戦闘計算</button>
+      <button class="help-tab" onclick="showHelpTab('gacha')">ガチャ確率</button>
+      <button class="help-tab" onclick="showHelpTab('rarity')">レア度</button>
+      <button class="help-tab" onclick="showHelpTab('status')">状態異常</button>
+    </div>
+    <div class="help-content">
+      <div id="help-combat" class="help-pane active">
+        <h3>⚔ ダメージ計算式</h3>
+        <p>攻撃・防御はダイスを降順に並べ<strong>1対1で比較</strong>します。</p>
+        <table><tr><th>要素</th><th>説明</th><th>例</th></tr>
+          <tr><td>成功数 (wins)</td><td>攻撃ダイス &gt; 対応防御ダイス</td><td>ATK5 vs DEF3 → 成功1</td></tr>
+          <tr><td>余剰ダイス</td><td>ATKがDEFより多い分は自動成功</td><td>ATK3個 vs DEF1個 → +2自動</td></tr>
+          <tr><td>合計差ボーナス</td><td>floor((ATK合計 - DEF合計) / 4)</td><td>(18-6)/4 = +3ボーナス</td></tr>
+          <tr><td>最終ダメージ</td><td>成功数 + 合計差 + スキル補正</td><td>3 + 1 = 4ダメージ</td></tr>
+        </table>
+        <p style="color:var(--accent);font-size:12px">📌 例: ATK[6,4,2] vs DEF[3,1]<br>→ 6&gt;3✓ 4&gt;1✓ 2は余剰✓ = 成功3<br>→ 合計差(12-4)/4=2 → <strong>5ダメージ</strong></p>
+        <h3>🛡 防御フェーズ計算</h3>
+        <p>敵の攻撃ダイス vs あなたの防御ダイスで同様に比較。<br>
+        敵の「成功数」＝あなたが受けるダメージ量。</p>
+        <table><tr><th>防御スキル</th><th>効果</th></tr>
+          <tr><td>鉄壁 (iron_wall)</td><td>防御ダイス+2d8</td></tr>
+          <tr><td>回避 (dodge)</td><td>防御ダイス+1d8</td></tr>
+          <tr><td>カウンター</td><td>防御成功数だけ敵にダメージ</td></tr>
+          <tr><td>防御姿勢</td><td>被ダメ-3軽減</td></tr>
+        </table>
+        <h3>☠ 状態異常</h3>
+        <table><tr><th>状態</th><th>効果</th><th>減衰</th></tr>
+          <tr><td>☠ 毒</td><td>毎ターンスタック数ダメージ</td><td>毎ターン-1</td></tr>
+          <tr><td>💀 呪い</td><td>毎ターンスタック数ダメージ</td><td>毎ターン-1</td></tr>
+        </table>
+      </div>
+      <div id="help-gacha" class="help-pane">
+        <h3>🎰 ガチャ確率 (コスト: 5G)</h3>
+        <table><tr><th>種別</th><th>確率</th><th>内容</th></tr>
+          <tr><td>★ RARE以上</td><td><strong style="color:var(--accent)">10%</strong></td><td>レリック優先出現</td></tr>
+          <tr><td>通常</td><td>90%</td><td>武器・レリック・回復・Gold</td></tr>
+        </table>
+        <h3>📦 宝箱報酬</h3>
+        <p>無料でランダム報酬1つ。武器・レリック・回復・Goldからランダム抽選。</p>
+        <h3>🏆 戦闘後報酬（3択）</h3>
+        <table><tr><th>種別</th><th>内容</th></tr>
+          <tr><td>通常戦闘</td><td>武器・レリック・回復・Goldから3択</td></tr>
+          <tr><td>精鋭戦闘</td><td>報酬品質UP / EPICも出現</td></tr>
+          <tr><td>ボス撃破</td><td>高品質報酬3択 + 次フロアへ</td></tr>
+        </table>
+        <h3>🏪 ショップ価格</h3>
+        <table><tr><th>アイテム</th><th>価格</th></tr>
+          <tr><td>COMMON武器</td><td>8G</td></tr>
+          <tr><td>UNCOMMON武器</td><td>12G</td></tr>
+          <tr><td>RARE武器</td><td>18G</td></tr>
+          <tr><td>EPIC武器</td><td>25G</td></tr>
+          <tr><td>LEGENDARY武器</td><td>35G</td></tr>
+          <tr><td>レリック</td><td>14G</td></tr>
+          <tr><td>回復薬 (HP+25)</td><td>6G</td></tr>
+          <tr><td>HP強化 (最大HP+15)</td><td>12G</td></tr>
+        </table>
+      </div>
+      <div id="help-rarity" class="help-pane">
+        <h3>💎 武器レア度比較</h3>
+        <table><tr><th>レア度</th><th>色</th><th>ATK目安</th><th>DEF目安</th><th>特徴</th></tr>
+          <tr><td>COMMON</td><td style="color:var(--text2)">グレー</td><td>d4〜d8×2〜5</td><td>d4〜d6×1〜2</td><td>基本武器・入手しやすい</td></tr>
+          <tr><td>UNCOMMON</td><td style="color:var(--green2)">緑</td><td>d6〜d8×3〜5</td><td>d6〜d8×1〜3</td><td>強化ダイス・追加スキル</td></tr>
+          <tr><td>RARE</td><td style="color:var(--blue2)">青</td><td>d8〜d10×3〜6</td><td>d6〜d10×2〜4</td><td>特殊スキル・高威力</td></tr>
+          <tr><td>EPIC</td><td style="color:var(--purple2)">紫</td><td>d10〜d12×3〜7</td><td>d8〜d10×2〜5</td><td>最大攻撃力・複合スキル</td></tr>
+          <tr><td>LEGENDARY</td><td style="color:var(--accent)">金</td><td>d8〜d12×5〜10</td><td>d8〜d12×2〜7</td><td>固有最強スキル・破格性能</td></tr>
+        </table>
+        <h3>🗡 武器タイプ別特徴</h3>
+        <table><tr><th>タイプ</th><th>攻撃傾向</th><th>防御傾向</th><th>強み</th></tr>
+          <tr><td>🗡 短剣</td><td>d4〜d8多数</td><td>d8〜d10少数</td><td>毒・連撃・高頻度</td></tr>
+          <tr><td>⚔ 大剣</td><td>d10〜d20×2〜4</td><td>d4〜d6</td><td>超火力・一撃必殺</td></tr>
+          <tr><td>🔱 槍</td><td>d8〜d10×2〜5</td><td>d6〜d10×2〜3</td><td>攻守バランス・貫通</td></tr>
+          <tr><td>🛡 盾</td><td>d4〜d10×1〜4</td><td>d8〜d12×3〜7</td><td>防御特化・カウンター</td></tr>
+          <tr><td>🪄 杖</td><td>d6〜d10×3〜9</td><td>d4〜d8×1〜3</td><td>ダイス変換・魔法増幅</td></tr>
+          <tr><td>🏹 弓</td><td>d4〜d8×3〜9</td><td>d4〜d8×1〜2</td><td>連射・エイム・呪い</td></tr>
+          <tr><td>🪓 斧</td><td>d8〜d12×2〜8</td><td>d4〜d8×1〜2</td><td>狂戦士・なぎ払い</td></tr>
+          <tr><td>👊 拳</td><td>d6〜d8×4〜10</td><td>d6〜d8×2〜4</td><td>連打・回避・バーサーク</td></tr>
+          <tr><td>🔪 刀</td><td>d8〜d10×3〜9</td><td>d6〜d8×2〜4</td><td>急所・居合・神聖</td></tr>
+          <tr><td>🪢 鞭</td><td>d4〜d6×4〜10</td><td>d6×1〜2</td><td>出血特化・多段・状態蓄積</td></tr>
+          <tr><td>⚔ 大鎌</td><td>d10〜d12×2〜5</td><td>d4〜d8×1〜2</td><td>脆弱・凍結付与・魂刈り</td></tr>
+          <tr><td>📖 魔導書</td><td>d6〜d8×3〜7</td><td>d6〜d8×2〜3</td><td>感電・焼却・状態異常複合</td></tr>
+        </table>
+        <h3>🎯 レリック重複システム</h3>
+        <p>「重複可」のレリックは同じものを複数所持すると効果がスタックします。<br>例: 幸運の星×3 = 毎攻撃d6×3追加</p>
+        <h3>📈 階層スケール</h3>
+        <table><tr><th>階層</th><th>敵HP目安</th><th>敵ATK</th><th>報酬品質</th></tr>
+          <tr><td>1-2F</td><td>20〜50</td><td>d4〜d6×3〜4</td><td>COMMON中心</td></tr>
+          <tr><td>3-4F</td><td>55〜85</td><td>d6〜d10×3〜5</td><td>UNCOMMON〜RARE</td></tr>
+          <tr><td>5-6F</td><td>95〜140</td><td>d8〜d12×3〜5</td><td>RARE中心</td></tr>
+          <tr><td>7-8F</td><td>155〜210</td><td>d10〜d12×4〜5</td><td>EPIC出現</td></tr>
+          <tr><td>9-10F</td><td>240〜280</td><td>d12×5〜6</td><td>LEGENDARY出現</td></tr>
+        </table>
+        <h3>💀 フロアボス一覧</h3>
+        <table><tr><th>階層</th><th>ボス</th><th>HP</th><th>特徴</th></tr>
+          <tr><td>1F</td><td>💀 骸骨王</td><td>80</td><td>骨槍・死の呪い</td></tr>
+          <tr><td>2F</td><td>🐉 翠竜</td><td>120</td><td>ブレス・龍爪</td></tr>
+          <tr><td>3F</td><td>💀 リッチ王</td><td>150</td><td>死の呪文・魂絡め</td></tr>
+          <tr><td>4F</td><td>👾 山巨人</td><td>200</td><td>粉砕拳・踏み潰し</td></tr>
+          <tr><td>5F</td><td>😡 魔王</td><td>240</td><td>魔王の一撃・次元斬</td></tr>
+          <tr><td>6F</td><td>😇 堕天使王</td><td>280</td><td>神聖粉砕・天罰</td></tr>
+          <tr><td>7F</td><td>🔥 古龍帝</td><td>330</td><td>龍帝炎・時空裂き</td></tr>
+          <tr><td>8F</td><td>🌌 虚空神</td><td>380</td><td>虚空崩壊・神の消去</td></tr>
+          <tr><td>9F</td><td>☄ 滅亡の化身</td><td>440</td><td>滅亡波・宇宙壊滅</td></tr>
+          <tr><td>10F</td><td>🌌 混沌神</td><td>520</td><td>混沌の息吹・虚無化</td></tr>
+        </table>
+      </div>
+      <div id="help-status" class="help-pane">
+        <h3>🛡 敵の耐性システム</h3>
+        <table><tr><th>表示</th><th>種別</th><th>効果</th></tr>
+          <tr><td><span style="color:var(--red2)">🚫 無効</span></td><td>IMMUNE</td><td>その武器タイプのダメージが<strong>0</strong>になる</td></tr>
+          <tr><td><span style="color:var(--accent)">🛡 耐性</span></td><td>RESIST</td><td>その武器タイプのダメージが<strong>半減</strong> (切り上げ)</td></tr>
+          <tr><td><span style="color:var(--green2)">⚡ 弱点</span></td><td>WEAK</td><td>その武器タイプのダメージが<strong>×1.5</strong>になる</td></tr>
+        </table>
+        <h3>⚠ 疲労システム (FATIGUE)</h3>
+        <p>スキル使用時に疲労が増加します。スキルを連打するほど弱くなります。</p>
+        <table><tr><th>疲労値</th><th>ペナルティ</th></tr>
+          <tr><td>0〜2</td><td>なし</td></tr>
+          <tr><td>3〜4</td><td>なし（要注意）</td></tr>
+          <tr><td>5〜7</td><td>攻撃ダイス-1個 / 最大値ボーナス無効</td></tr>
+          <tr><td>8〜10</td><td>攻撃ダイス-2個 / リロール無効 / 最大値ボーナス無効</td></tr>
+        </table>
+        <p style="color:var(--text3);font-size:11px">・スキルなし選択→疲労-1回復<br>・完全防御成功→疲労-1回復<br>・戦闘開始時→疲労が半分に回復<br>・スキルにはクールダウン(CD)あり。CDターン中は使用不可</p>
+        <p style="color:var(--accent);font-size:11px">💡 強スキルのCD例: 死の一撃CD2T、神聖斬CD3T、タイタン砕きCD2T</p>
+        <h3>☠ 状態異常一覧</h3>
+        <table><tr><th>状態</th><th>効果</th><th>付与方法</th></tr>
+          <tr><td>☠ 毒</td><td>毎ターン終了スタック数ダメージ。1減衰</td><td>短剣スキル、毒刃など</td></tr>
+          <tr><td>💀 呪い</td><td>毎ターン終了スタック数ダメージ。1減衰</td><td>呪いの矢など</td></tr>
+          <tr><td>🩸 出血</td><td>毎ターン終了スタック数ダメージ。<strong>減衰なし</strong></td><td>鞭スキル全般</td></tr>
+          <tr><td>💔 脆弱</td><td>敵の防御ダイスをスタック分削減（1ターン）</td><td>大鎌、絡め取りなど</td></tr>
+          <tr><td>❄ 凍結</td><td>次ターンダイス数をスタック分削減</td><td>大鎌スキル全般</td></tr>
+          <tr><td>⚡ 感電</td><td>ダイス目1になる確率+20%/スタック</td><td>魔導書スキル全般</td></tr>
+          <tr><td>🔥 焼却</td><td>防御ダイス面数をスタック分低下（毎ターン1減衰）</td><td>焼却スキル、魔本爆発など</td></tr>
+        </table>
+        <h3>🔮 敵パッシブ特性</h3>
+        <table><tr><th>特性</th><th>効果</th><th>対策</th></tr>
+          <tr><td>🔁 防御リロール</td><td>低い防御ダイスを振り直す</td><td>大量のダイスで圧倒</td></tr>
+          <tr><td>🛡 同値防御</td><td>攻防同値でも防御側が勝利</td><td>より高い面数のダイスを使う</td></tr>
+          <tr><td>💥 最大値防御+2</td><td>最大値の防御ダイスに+2ボーナス</td><td>防御無視スキルが有効</td></tr>
+          <tr><td>🧱 多段耐性</td><td>成功数を1減らす</td><td>armorPierceスキルで補う</td></tr>
+          <tr><td>🎲 高面数耐性</td><td>d10以上のATKダイスが弱くなる</td><td>多数の低面数ダイスで攻める</td></tr>
+          <tr><td>💚 毒無効</td><td>毒付与無効</td><td>出血や凍結で代替</td></tr>
+          <tr><td>🩸 出血弱点</td><td>出血ダメージ×2</td><td>鞭で積極的に出血を重ねる</td></tr>
+          <tr><td>↩ 防御反撃</td><td>プレイヤーの防御成功時に反撃</td><td>積極的に攻めて防御を避ける</td></tr>
+          <tr><td>⛔ 余剰無効</td><td>余剰成功ダイス（対応する防御なし）が無効</td><td>防御無視スキルで成功数を確保</td></tr>
+          <tr><td>📈 毎ターン強化</td><td>毎ターン攻撃ダイス増加</td><td>早期決着を目指す</td></tr>
+        </table>
+        <h3>🔖 ゲームルール</h3>
+        <p>・同一武器タイプは戦闘中1本のみ使用可<br>
+        ・レリックは重複所持で効果スタック<br>
+        ・各フロア6フェーズ目は必ずBOSS<br>
+        ・フェーズ1〜5はランダム (戦闘60%・宝箱12%・ガチャ10%・ショップ10%・精鋭8%)<br>
+        ・10階層BOSSを倒すとクリア</p>
+        <h3>💎 報酬レア度テーブル</h3>
+        <table><tr><th>イベント</th><th>レア度ボーナス</th></tr>
+          <tr><td>通常戦闘</td><td>フロアレア度テーブル通り</td></tr>
+          <tr><td>宝箱</td><td>フロアレア度テーブル通り（同じ）</td></tr>
+          <tr><td>ガチャ</td><td>フロアレア度テーブル通り (10%でRARE以上確定)</td></tr>
+          <tr><td>精鋭戦闘</td><td>フロア+2のテーブルを使用（レア度UP）</td></tr>
+          <tr><td>ボス撃破</td><td>フロア+1のテーブルを使用（レア度UP）</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========= ITEM TOOLTIP ========= -->
+<div id="item-tooltip" class="item-tooltip" style="display:none">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-type" id="tt-type"></div>
+  <div class="tt-desc" id="tt-desc"></div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
