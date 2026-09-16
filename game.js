@@ -787,12 +787,97 @@ const RARITY_COLOR = { common:'var(--text2)', uncommon:'var(--green2)', rare:'va
 const RARITY_LABEL = { common:'COMMON', uncommon:'UNCOMMON', rare:'RARE', epic:'EPIC', legendary:'LEGENDARY' };
 
 // ============================================================
+// META PROGRESSION — persisted in localStorage
+// ============================================================
+const META_STORAGE_KEY = 'dice-dungeon-meta-v1';
+const MEMORY_PASSIVES = [
+  { id:'vitality', icon:'❤', name:'生命の残響', desc:'開始時の最大HP+8、HPを全回復' },
+  { id:'fortune', icon:'✦', name:'幸運の残響', desc:'開始時にGold+8' },
+  { id:'sharpness', icon:'⚔', name:'鋭利な残響', desc:'攻撃ダイスの出目+1' },
+  { id:'ward', icon:'🛡', name:'守護の残響', desc:'防御時にd6を1個追加' },
+  { id:'recovery', icon:'✚', name:'再生の残響', desc:'各戦闘開始時にHP+5' },
+];
+const ACHIEVEMENTS = [
+  { id:'first_blood', icon:'⚔', name:'初陣', desc:'敵を1体倒す' },
+  { id:'boss_hunter', icon:'👁', name:'ボスハンター', desc:'フロアボスを1体倒す' },
+  { id:'collector', icon:'🗡', name:'武器蒐集家', desc:'1回の冒険で武器を4種類所持する' },
+  { id:'delver', icon:'⬇', name:'深層への挑戦者', desc:'フロア5に到達する' },
+  { id:'conqueror', icon:'🏆', name:'ダンジョン征服者', desc:'ダンジョンをクリアする' },
+];
+
+function loadMeta() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(META_STORAGE_KEY));
+    return { memories: Array.isArray(stored?.memories) ? stored.memories : [], achievements: stored?.achievements || {} };
+  } catch (_) { return { memories: [], achievements: {} }; }
+}
+let META = loadMeta();
+function saveMeta() { localStorage.setItem(META_STORAGE_KEY, JSON.stringify(META)); }
+function getPassive(id) { return MEMORY_PASSIVES.find(p => p.id === id); }
+function unlockAchievement(id) {
+  if (META.achievements[id]) return;
+  const achievement = ACHIEVEMENTS.find(a => a.id === id);
+  if (!achievement) return;
+  META.achievements[id] = new Date().toISOString();
+  saveMeta();
+  const toast = document.getElementById('unlock-toast');
+  toast.textContent = `🏆 ACHIEVEMENT UNLOCKED — ${achievement.name}`;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+function toggleAchievements() {
+  const modal = document.getElementById('achievements-modal');
+  modal.classList.toggle('open');
+  if (!modal.classList.contains('open')) return;
+  document.getElementById('achievement-list').innerHTML = ACHIEVEMENTS.map(a => {
+    const unlocked = META.achievements[a.id];
+    return `<div class="achievement-card ${unlocked ? 'unlocked' : 'locked'}"><div class="achievement-name">${a.icon} ${a.name}</div><div class="achievement-desc">${a.desc}</div><div class="achievement-state">${unlocked ? '✓ UNLOCKED' : '🔒 LOCKED'}</div></div>`;
+  }).join('');
+}
+let selectedMemoryIds = [];
+function openMemorySelection() {
+  selectedMemoryIds = [];
+  document.getElementById('memory-modal').classList.add('open');
+  renderMemorySelection();
+}
+function closeMemorySelection() { document.getElementById('memory-modal').classList.remove('open'); }
+function renderMemorySelection() {
+  const list = document.getElementById('memory-list');
+  if (!META.memories.length) list.innerHTML = '<div class="memory-empty">まだメモリーはありません。冒険を終えると、武器の記憶がここに刻まれます。</div>';
+  else list.innerHTML = META.memories.map(memory => {
+    const weapon = WEAPONS[memory.weaponId]; const passive = getPassive(memory.passiveId);
+    const selected = selectedMemoryIds.includes(memory.id);
+    const disabled = !selected && selectedMemoryIds.length >= 2;
+    return `<button class="memory-card ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" onclick="toggleMemory('${memory.id}')"><div class="memory-run">${memory.outcome === 'clear' ? '✦ CLEAR' : '☠ FALLEN'} · FLOOR ${memory.floor}</div><div class="memory-weapon">${weapon?.icon || '⚔'} ${weapon?.name || '失われた武器'}</div>${passive ? `<div class="memory-passive">${passive.icon} ${passive.name}<br>${passive.desc}</div>` : '<div class="memory-passive">武器の記憶のみ</div>'}</button>`;
+  }).join('');
+  document.getElementById('memory-count').textContent = `${selectedMemoryIds.length} / 2 SELECTED`;
+}
+function toggleMemory(id) {
+  if (selectedMemoryIds.includes(id)) selectedMemoryIds = selectedMemoryIds.filter(x => x !== id);
+  else if (selectedMemoryIds.length < 2) selectedMemoryIds.push(id);
+  renderMemorySelection();
+}
+function createMemory(outcome) {
+  if (G.memoryCreated) return null;
+  G.memoryCreated = true;
+  const weaponIds = Object.keys(G.weapons);
+  if (!weaponIds.length) return;
+  const weaponId = weaponIds[Math.floor(Math.random() * weaponIds.length)];
+  const passive = outcome === 'clear' ? MEMORY_PASSIVES[Math.floor(Math.random() * MEMORY_PASSIVES.length)] : null;
+  META.memories.unshift({ id:`${Date.now()}-${Math.random().toString(36).slice(2,7)}`, weaponId, passiveId:passive?.id || null, outcome, floor:Math.min(G.floor, 10), createdAt:new Date().toISOString() });
+  META.memories = META.memories.slice(0, 24);
+  saveMeta();
+  return { weapon:WEAPONS[weaponId], passive };
+}
+
+// ============================================================
 // GAME STATE
 // ============================================================
 
 let G = {};
 
-function newGame() {
+function newGame(memoryIds = []) {
+  const inherited = META.memories.filter(m => memoryIds.includes(m.id));
   G = {
     floor: 1,
     phase: 0,
@@ -800,6 +885,7 @@ function newGame() {
     gold: 10,
     weapons: { dagger: {...WEAPONS.dagger}, handaxe: {...WEAPONS.handaxe} },
     equippedWeapons: ['dagger', 'handaxe'],
+    memoryPassives: inherited.map(m => m.passiveId).filter(Boolean),
     relics: [],
     statuses: {},
     totalKills: 0,
@@ -816,6 +902,16 @@ function newGame() {
     // スキルクールダウン
     skillCooldowns: {}, // { skillId: remainingTurns }
   };
+  for (const memory of inherited) {
+    if (WEAPONS[memory.weaponId]) { G.weapons[memory.weaponId] = {...WEAPONS[memory.weaponId]}; if (!G.equippedWeapons.includes(memory.weaponId)) G.equippedWeapons.push(memory.weaponId); }
+  }
+  applyMemoryStartPassives();
+}
+
+function applyMemoryStartPassives() {
+  const count = id => G.memoryPassives.filter(p => p === id).length;
+  const vitality = count('vitality'); if (vitality) { G.maxHp += vitality * 8; G.hp = G.maxHp; }
+  G.gold += count('fortune') * 8;
 }
 
 // 戦闘中に使える武器 — 同一typeにつき1本のみ
@@ -849,7 +945,7 @@ function rollDice(diceArr) {
   return results;
 }
 
-function applyRelicsToDice(rolls, relicIds) {
+function applyRelicsToDice(rolls, relicIds, isAttack = true) {
   let results = [...rolls];
   const TIERS = [4,6,8,10,12,20];
 
@@ -876,6 +972,10 @@ function applyRelicsToDice(rolls, relicIds) {
       return {...d,sides:ns,val:Math.min(d.val,ns)};
     });
   }
+
+  // Memory passive: sharpness boosts every inherited attack roll.
+  const sharpness = (G.memoryPassives || []).filter(p => p === 'sharpness').length;
+  if (isAttack && sharpness > 0) results = results.map(d => ({...d, val:d.val + sharpness}));
 
   // Value modifiers (重複分加算)
   const evenBoost = countRelic('even_boost');
@@ -1026,8 +1126,10 @@ function renderTopRelics() {
 // GAME START / TITLE
 // ============================================================
 
-function startGame() {
-  newGame();
+function startGame() { startGameWithMemories(); }
+function startGameWithMemories() {
+  newGame(selectedMemoryIds);
+  closeMemorySelection();
   updateTopBar();
   showMapScreen();
 }
@@ -1153,6 +1255,9 @@ function startCombat(isElite, isBoss) {
 
   // Clear log
   document.getElementById('battle-log').innerHTML = '';
+
+  const memoryRecovery = (G.memoryPassives || []).filter(p => p === 'recovery').length;
+  if (memoryRecovery) G.hp = Math.min(G.maxHp, G.hp + memoryRecovery * 5);
 
   // First relic: first_extra
   if (G.relics.includes('first_extra')) {
@@ -1929,8 +2034,10 @@ async function executePlayerDefend() {
 
   let atkRolls = rollDice(G.enemy.nextAtkDice);
   let baseDefArr = buildDiceList(G.selectedWeapon, false, skillState);
+  const memoryWard = (G.memoryPassives || []).filter(p => p === 'ward').length;
+  for (let i = 0; i < memoryWard; i++) baseDefArr.push({n:1, sides:6});
   let defRolls = rollDice(baseDefArr);
-  defRolls = applyRelicsToDice(defRolls, G.relics);
+  defRolls = applyRelicsToDice(defRolls, G.relics, false);
 
   // 防御時: 敵のカウンターパッシブ（防御成功時反撃は後で処理）
   const defSkillState = { ...skillState };
@@ -2024,6 +2131,9 @@ async function executePlayerDefend() {
 async function enemyDeath() {
   addLog(`${G.enemy.name} を撃破！`, 'win');
   G.totalKills++;
+  unlockAchievement('first_blood');
+  if (G.enemy.isBoss) unlockAchievement('boss_hunter');
+  if (Object.keys(G.weapons).length >= 4) unlockAchievement('collector');
   G.usedFirstExtra = false;
   G.consecutiveHits = 0;
 
@@ -2041,6 +2151,7 @@ async function enemyDeath() {
 
   if (G.enemy.isBoss) {
     G.floor++;
+    if (G.floor >= 5) unlockAchievement('delver');
     if (G.floor > 10) { showWin(); return; }
     G.phase = 0;
     addLog(`⭐ FLOOR ${G.floor} へ突入！`, 'win');
@@ -2557,6 +2668,7 @@ function addWeaponToInventory(wId) {
   if (!G.equippedWeapons.includes(wId)) {
     G.equippedWeapons.push(wId);
   }
+  if (Object.keys(G.weapons).length >= 4) unlockAchievement('collector');
   renderInventory();
 }
 
@@ -2795,12 +2907,17 @@ function renderInventory() {
 // ============================================================
 
 function showGameOver() {
+  const memory = createMemory('fallen');
   document.getElementById('gameover-stats').textContent =
-    `FLOOR ${G.floor} · KILLS ${G.totalKills} · GOLD ${G.gold}`;
+    `FLOOR ${G.floor} · KILLS ${G.totalKills} · GOLD ${G.gold}${memory ? ` · MEMORY: ${memory.weapon.icon}${memory.weapon.name}` : ''}`;
   showScreen('gameover-screen');
 }
 
 function showWin() {
+  const memory = createMemory('clear');
+  unlockAchievement('conqueror');
+  const subtitle = document.querySelector('#win-screen p');
+  if (subtitle && memory) subtitle.textContent = `MEMORY FORGED: ${memory.weapon.icon} ${memory.weapon.name} · ${memory.passive.icon} ${memory.passive.name}`;
   showScreen('win-screen');
 }
 
