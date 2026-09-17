@@ -20,7 +20,10 @@
     <div class="title-die">d10</div>
     <div class="title-die">d12</div>
   </div>
-  <button class="btn btn-primary" onclick="startGame()">ENTER THE DUNGEON</button>
+  <div class="title-actions">
+    <button class="btn btn-primary" onclick="openMemorySelection()">ENTER THE DUNGEON</button>
+    <button class="btn btn-sm" onclick="toggleAchievements()">🏆 ACHIEVEMENTS</button>
+  </div>
 </div>
 
 <!-- ========= MAP SCREEN ========= -->
@@ -122,14 +125,14 @@
 <div id="gameover-screen" class="screen">
   <div class="gameover-title">GAME OVER</div>
   <p style="font-family:'Share Tech Mono',monospace;color:var(--text3);letter-spacing:0.2em" id="gameover-stats"></p>
-  <button class="btn btn-primary" onclick="startGame()">TRY AGAIN</button>
+  <button class="btn btn-primary" onclick="openMemorySelection()">TRY AGAIN</button>
 </div>
 
 <!-- ========= WIN SCREEN ========= -->
 <div id="win-screen" class="screen">
   <div style="font-family:'Cinzel',serif;font-size:clamp(32px,6vw,72px);font-weight:900;color:var(--accent);text-shadow:0 0 40px rgba(232,184,64,0.5);letter-spacing:0.2em;text-align:center">DUNGEON<br>CLEARED</div>
   <p style="font-family:'Share Tech Mono',monospace;color:var(--text2);letter-spacing:0.2em">ALL 10 FLOORS CONQUERED</p>
-  <button class="btn btn-primary" onclick="startGame()">PLAY AGAIN</button>
+  <button class="btn btn-primary" onclick="openMemorySelection()">PLAY AGAIN</button>
 </div>
 
 <!-- ========= INVENTORY PANEL ========= -->
@@ -317,6 +320,24 @@
     </div>
   </div>
 </div>
+
+
+<!-- ========= MEMORY / ACHIEVEMENT MODALS ========= -->
+<div id="memory-modal" class="modal-overlay" onclick="if(event.target===this)closeMemorySelection()">
+  <div class="modal-box memory-modal-box">
+    <div class="modal-heading"><div class="modal-title">🧠 MEMORIES</div><button class="btn btn-sm" onclick="closeMemorySelection()">CLOSE</button></div>
+    <p class="modal-copy">過去の冒険の記憶を最大2つ選ぶと、記録された武器とパッシブを継承して開始します。</p>
+    <div id="memory-list" class="memory-list"></div>
+    <div class="modal-actions"><span id="memory-count" class="selection-count">0 / 2 SELECTED</span><button class="btn btn-primary btn-sm" onclick="startGameWithMemories()">BEGIN RUN</button></div>
+  </div>
+</div>
+<div id="achievements-modal" class="modal-overlay" onclick="if(event.target===this)toggleAchievements()">
+  <div class="modal-box achievement-modal-box">
+    <div class="modal-heading"><div class="modal-title">🏆 ACHIEVEMENTS</div><button class="btn btn-sm" onclick="toggleAchievements()">CLOSE</button></div>
+    <div id="achievement-list" class="achievement-list"></div>
+  </div>
+</div>
+<div id="unlock-toast" class="unlock-toast" role="status"></div>
 
 <!-- ========= ITEM TOOLTIP ========= -->
 <div id="item-tooltip" class="item-tooltip" style="display:none">

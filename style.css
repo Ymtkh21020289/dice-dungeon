@@ -1142,3 +1142,32 @@ body::before {
 .status-badge.frozen  { color: #42a5f5; background: rgba(66,165,245,0.12); }
 .status-badge.shocked { color: #ffee58; background: rgba(255,238,88,0.12); }
 .status-badge.burning { color: #ff6f00; background: rgba(255,111,0,0.12); }
+
+/* ============ META PROGRESSION ============ */
+.title-actions { display:flex; flex-direction:column; align-items:center; gap:12px; }
+#memory-modal, #achievements-modal { display:none; }
+#memory-modal.open, #achievements-modal.open { display:flex; }
+.memory-modal-box, .achievement-modal-box { max-width:760px; max-height:90vh; display:flex; flex-direction:column; }
+.modal-heading, .modal-actions { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.modal-copy { color:var(--text2); font-size:13px; line-height:1.6; margin:-6px 0 16px; }
+.memory-list, .achievement-list { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px; overflow-y:auto; padding:2px; }
+.memory-empty { grid-column:1/-1; color:var(--text3); text-align:center; padding:30px 10px; font-family:'Share Tech Mono',monospace; font-size:12px; }
+.memory-card, .achievement-card { background:var(--bg3); border:1px solid var(--border); padding:13px; text-align:left; color:var(--text); transition:all .15s; }
+.memory-card { cursor:pointer; }
+.memory-card:hover { border-color:var(--accent); }
+.memory-card.selected { border-color:var(--accent); box-shadow:0 0 14px rgba(232,184,64,.15); background:rgba(232,184,64,.07); }
+.memory-card.disabled { opacity:.45; cursor:not-allowed; }
+.memory-run { color:var(--text3); font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:.1em; }
+.memory-weapon { margin-top:6px; color:var(--accent2); font-weight:700; font-size:15px; }
+.memory-passive { color:var(--purple2); font-size:12px; margin-top:5px; }
+.selection-count { color:var(--accent); font-family:'Share Tech Mono',monospace; font-size:11px; }
+.modal-actions { margin-top:16px; }
+.achievement-card { min-height:100px; }
+.achievement-card.unlocked { border-color:var(--accent); }
+.achievement-card.locked { opacity:.52; filter:grayscale(1); }
+.achievement-name { color:var(--accent); font-family:'Cinzel',serif; font-size:13px; margin-bottom:5px; }
+.achievement-desc { color:var(--text2); font-size:12px; line-height:1.35; }
+.achievement-state { margin-top:9px; color:var(--green2); font-family:'Share Tech Mono',monospace; font-size:10px; }
+.unlock-toast { position:fixed; z-index:600; top:22px; left:50%; transform:translate(-50%,-160%); background:var(--bg2); border:1px solid var(--accent); color:var(--accent2); padding:12px 20px; font-family:'Cinzel',serif; font-size:13px; box-shadow:var(--shadow); transition:transform .25s; pointer-events:none; }
+.unlock-toast.show { transform:translate(-50%,0); }
+@media (max-width:540px) { .memory-modal-box, .achievement-modal-box { padding:20px; } .memory-list, .achievement-list { grid-template-columns:1fr; } }
