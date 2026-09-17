@@ -803,6 +803,8 @@ const ACHIEVEMENTS = [
   { id:'collector', icon:'🗡', name:'武器蒐集家', desc:'1回の冒険で武器を4種類所持する' },
   { id:'delver', icon:'⬇', name:'深層への挑戦者', desc:'フロア5に到達する' },
   { id:'conqueror', icon:'🏆', name:'ダンジョン征服者', desc:'ダンジョンをクリアする' },
+  { id:'legend_second_floor', icon:'✨', name:'伝説を携えし者', desc:'2層目進出時にLEGENDARY武器を所持する' },
+  { id:'one_turn_kill', icon:'⚡', name:'瞬殺', desc:'1ターンで敵を討伐する' },
 ];
 
 function loadMeta() {
@@ -848,7 +850,8 @@ function renderMemorySelection() {
     const weapon = WEAPONS[memory.weaponId]; const passive = getPassive(memory.passiveId);
     const selected = selectedMemoryIds.includes(memory.id);
     const disabled = !selected && selectedMemoryIds.length >= 2;
-    return `<button class="memory-card ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" onclick="toggleMemory('${memory.id}')"><div class="memory-run">${memory.outcome === 'clear' ? '✦ CLEAR' : '☠ FALLEN'} · FLOOR ${memory.floor}</div><div class="memory-weapon">${weapon?.icon || '⚔'} ${weapon?.name || '失われた武器'}</div>${passive ? `<div class="memory-passive">${passive.icon} ${passive.name}<br>${passive.desc}</div>` : '<div class="memory-passive">武器の記憶のみ</div>'}</button>`;
+    const outcomeLabel = memory.outcome === 'clear' ? '✦ CLEAR · HIGH-RARITY DRAW UP' : '☠ FALLEN';
+    return `<button class="memory-card ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}" onclick="toggleMemory('${memory.id}')"><div class="memory-run">${outcomeLabel} · FLOOR ${memory.floor}</div><div class="memory-weapon">${weapon?.icon || '⚔'} ${weapon?.name || '失われた武器'}</div>${passive ? `<div class="memory-passive">${passive.icon} ${passive.name}<br>${passive.desc}</div>` : '<div class="memory-passive">武器の記憶のみ</div>'}</button>`;
   }).join('');
   document.getElementById('memory-count').textContent = `${selectedMemoryIds.length} / 2 SELECTED`;
 }
@@ -857,12 +860,25 @@ function toggleMemory(id) {
   else if (selectedMemoryIds.length < 2) selectedMemoryIds.push(id);
   renderMemorySelection();
 }
+function pickMemoryWeapon(weaponIds, outcome) {
+  if (outcome !== 'clear') return weaponIds[Math.floor(Math.random() * weaponIds.length)];
+  // Clear memories favor higher rarities, while still allowing any held weapon to be remembered.
+  const rarityWeights = { common: 1, uncommon: 2, rare: 4, epic: 7, legendary: 11 };
+  const total = weaponIds.reduce((sum, id) => sum + (rarityWeights[WEAPONS[id]?.rarity] || 1), 0);
+  let roll = Math.random() * total;
+  for (const id of weaponIds) {
+    roll -= rarityWeights[WEAPONS[id]?.rarity] || 1;
+    if (roll <= 0) return id;
+  }
+  return weaponIds[weaponIds.length - 1];
+}
+
 function createMemory(outcome) {
   if (G.memoryCreated) return null;
   G.memoryCreated = true;
   const weaponIds = Object.keys(G.weapons);
   if (!weaponIds.length) return;
-  const weaponId = weaponIds[Math.floor(Math.random() * weaponIds.length)];
+  const weaponId = pickMemoryWeapon(weaponIds, outcome);
   const passive = outcome === 'clear' ? MEMORY_PASSIVES[Math.floor(Math.random() * MEMORY_PASSIVES.length)] : null;
   META.memories.unshift({ id:`${Date.now()}-${Math.random().toString(36).slice(2,7)}`, weaponId, passiveId:passive?.id || null, outcome, floor:Math.min(G.floor, 10), createdAt:new Date().toISOString() });
   META.memories = META.memories.slice(0, 24);
@@ -901,6 +917,7 @@ function newGame(memoryIds = []) {
     maxFatigue: 10,
     // スキルクールダウン
     skillCooldowns: {}, // { skillId: remainingTurns }
+    combatTurn: 0,
   };
   for (const memory of inherited) {
     if (WEAPONS[memory.weaponId]) { G.weapons[memory.weaponId] = {...WEAPONS[memory.weaponId]}; if (!G.equippedWeapons.includes(memory.weaponId)) G.equippedWeapons.push(memory.weaponId); }
@@ -1252,6 +1269,7 @@ function startCombat(isElite, isBoss) {
   // 戦闘開始時に疲労を半分回復
   G.fatigue = Math.floor(G.fatigue / 2);
   G.skillCooldowns = {};
+  G.combatTurn = 1;
 
   // Clear log
   document.getElementById('battle-log').innerHTML = '';
@@ -2106,6 +2124,7 @@ async function executePlayerDefend() {
   if (G.enemy.curHp <= 0) { await enemyDeath(); return; }
 
   G.combatPhase = 'player_atk';
+  G.combatTurn++;
   G.selectedWeapon = null;
   G.selectedSkill = null;
   prepareEnemyIntent();
@@ -2133,6 +2152,7 @@ async function enemyDeath() {
   G.totalKills++;
   unlockAchievement('first_blood');
   if (G.enemy.isBoss) unlockAchievement('boss_hunter');
+  if (G.combatTurn === 1) unlockAchievement('one_turn_kill');
   if (Object.keys(G.weapons).length >= 4) unlockAchievement('collector');
   G.usedFirstExtra = false;
   G.consecutiveHits = 0;
@@ -2152,6 +2172,7 @@ async function enemyDeath() {
   if (G.enemy.isBoss) {
     G.floor++;
     if (G.floor >= 5) unlockAchievement('delver');
+    if (G.floor === 2 && Object.values(G.weapons).some(w => w.rarity === 'legendary')) unlockAchievement('legend_second_floor');
     if (G.floor > 10) { showWin(); return; }
     G.phase = 0;
     addLog(`⭐ FLOOR ${G.floor} へ突入！`, 'win');
